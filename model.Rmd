@@ -1,0 +1,273 @@
+---
+title: "model"
+output: html_document
+---
+
+load libraries
+```{r}
+library(tidyverse)
+library(dbplyr)
+library(stargazer)
+library(ggplot2)
+```
+
+
+read the dataset
+```{r}
+df <- read.csv("data/simulated_data.csv")
+```
+
+create a column indicating the value of the variable Tt, before/after treatment
+& divide the type variable to beer and any other
+```{r}
+data <- df |>
+  mutate(time_dum=ifelse(time>=15,1,0)) |>
+  mutate(type_beer=ifelse(type == "Beer", 1, 0))
+```
+
+check if wine_sales (Xi) and beer_sales(Yi) & treatment (Di) are correlated
+```{r}
+data_pre <- data |>
+  filter(time<=14)
+```
+
+```{r}
+coef(lm(beer_sales~.-time_dum-type_beer, data=data_pre))["wine_sales"]
+coef(lm(treatment~.-time_dum-type_beer, data=data_pre))["wine_sales"]
+```
+not quite, for the periods before the treatment.
+
+
+run a DD model regression without controls
+```{r}
+dd <- lm(beer_sales~treatment*time_dum, data=data)
+```
+
+try to add controls and see if the result changes significantly
+```{r}
+dd_loc <- lm(beer_sales~treatment*time_dum + location, data=data)
+```
+
+```{r}
+dd_type <- lm(beer_sales~treatment*time_dum + type, data=data)
+```
+
+```{r}
+dd_wine <- lm(beer_sales~treatment*time_dum + wine_sales, data=data)
+```
+
+```{r}
+dd_theft <- lm(beer_sales~treatment*time_dum + theft_rate, data=data)
+```
+
+```{r}
+dd_wine_theft <- lm(beer_sales~treatment*time_dum + wine_sales+theft_rate, data=data)
+```
+
+
+```{r}
+stargazer(dd, 
+          dd_loc, 
+          dd_type, 
+          dd_wine, 
+          dd_theft,
+          dd_wine_theft,
+          type = 'text',
+          df = FALSE,
+          omit.stat = c('F'))
+```
+we can see there is a big difference between the coefficient of treatment:time_dum of the model adding wine_sales as a control and the other models (in the last column it is also different from others since it also includes wine_sales (and theft_rate) but no big gap between it and the one only controlling over wine_sales; that is theft_rate does not really matter).
+
+
+test the assumption for DD model - CTA: plot the time trends of beer sales
+```{r}
+data_test <- data |>
+  group_by(treatment, time) |>
+  summarize(beer_sales_mean=mean(beer_sales))
+```
+
+```{r}
+ggplot(data_test, aes(x = time, y = beer_sales_mean, color = factor(treatment))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1) +
+  geom_vline(xintercept = 17, linetype = "dashed", color = "grey50") +
+  scale_color_manual(
+    values = c("blue", "red"),
+    labels = c("control", "treatment"),
+    name   = "Promotion"
+  ) +
+  labs(
+    title    = "Average Beer Sales by Time Group and Treatment",
+    subtitle = "Full series (0-16 = pre-trend; start treatment at 17=July)",
+    x        = "time",
+    y        = "average beer sales over stores"
+  ) +
+  theme_minimal()
+```
+
+test scientifically
+```{r}
+dd_cta_test <- lm(beer_sales~treatment*factor(time), data=data_pre)
+
+#coef(dd)["treatment:time_dum"]
+summary(dd_cta_test)
+```
+looks bad. pre-trends do not common for most of the periods before treatment, but most of them are not statistically significant.
+
+add some controls and try again
+```{r}
+summary(lm(beer_sales~treatment*factor(time) + wine_sales + theft_rate, data=data_pre))
+```
+Most of them are not close to 0, but again most of them are not statistically significant.
+
+
+## Let me try a DDD model 
+first, let me check if wine_sales is a time-invariant variable and then induces selection bias.
+```{r}
+data_test_wine_sales <- data |>
+  group_by(treatment, time) |>
+  summarize(wine_sales_mean=mean(wine_sales))
+            
+ggplot(data_test_wine_sales, aes(x = time, y = wine_sales_mean, color = factor(treatment))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1) +
+  geom_vline(xintercept = 17, linetype = "dashed", color = "grey50") +
+  scale_color_manual(
+    values = c("blue", "red"),
+    labels = c("control", "treatment"),
+    name   = "Promotion"
+  ) +
+  labs(
+    title    = "Average Wine Sales by Time Group and Treatment",
+    subtitle = "Full series (0-16 = pre-trend; start treatment at 17=July)",
+    x        = "time",
+    y        = "average beer sales over stores"
+  ) +
+  theme_minimal()
+```
+for the control and treatment together
+```{r}
+data_test_wine_sales_all <- data |>
+  group_by(time) |>
+  summarize(wine_sales_mean=mean(wine_sales))
+            
+ggplot(data_test_wine_sales_all, aes(x = time, y = wine_sales_mean)) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1) +
+  geom_vline(xintercept = 17, linetype = "dashed", color = "grey50") +
+  labs(
+    title    = "Average Beer Sales by Time Group and Treatment",
+    subtitle = "Full series (0-16 = pre-trend; start treatment at 17=July)",
+    x        = "time",
+    y        = "average beer sales over stores"
+  ) +
+  theme_minimal()
+```
+It is! It is better for us to include it as a control to our final DD or DDD model.
+
+check for theft rate
+```{r}
+data_test_theft_rate_all <- data |>
+  group_by(time) |>
+  summarize(theft_rate_mean=mean(theft_rate))
+            
+ggplot(data_test_theft_rate_all, aes(x = time, y = theft_rate_mean)) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1) +
+  geom_vline(xintercept = 17, linetype = "dashed", color = "grey50") +
+  labs(
+    title    = "Average Theft Rate by Time Group and Treatment",
+    subtitle = "Full series (0-16 = pre-trend; start treatment at 17=July)",
+    x        = "time",
+    y        = "average beer sales over stores"
+  ) +
+  theme_minimal()
+```
+theft rate does not change a lot in trend over time as a whole from the plot
+
+check if beer sales did change over time
+```{r}
+data_test_beer_sales_all <- data |>
+  group_by(time) |>
+  summarize(beer_sales_mean=mean(beer_sales))
+            
+ggplot(data_test_beer_sales_all, aes(x = time, y = beer_sales_mean)) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1) +
+  geom_vline(xintercept = 17, linetype = "dashed", color = "grey50") +
+  labs(
+    title    = "Average Beer Sales by Time Group and Treatment",
+    subtitle = "Full series (0-16 = pre-trend; start treatment at 17=July)",
+    x        = "time",
+    y        = "average beer sales over stores"
+  ) +
+  theme_minimal()
+```
+yes there might be some effects occurs to make it continuously increase, but is that only caused by treatment effect? we need to check other effect including time (which is actually control in my DD model) and group/placebo effects (let me try the DDD model now).
+
+Triple Difference model (control over the store type):
+
+check if type_beer is a good placebo:
+```{r}
+summary(lm(beer_sales ~ treatment * type_beer + time + wine_sales + theft_rate, data = data_pre))
+```
+since the coefficient of the interaction term between treatment and type_beer is small (0.50068) and statistically insignificant in the pre-treatment period with p = 0.698, the selection of type_beer as a placebo dimension appears valid.
+
+
+DDD model without controls
+```{r}
+ddd_type <- lm(beer_sales~ treatment*time_dum*type_beer, data=data)
+
+summary(ddd_type)
+```
+DDD model controlling over wine sales:
+```{r}
+ddd_wine <- lm(beer_sales~treatment*time_dum*type_beer+wine_sales, data=data)
+
+summary(ddd_wine)
+```
+
+Now check the identification assumptions of DDD: before the policy, the control(Gi=0, Pi=0) & treatment groups (Gi=1, Pi=0) have the same time trend; and the placebo-treatment (Gi=1, Pi=1) and placebo control groups (Gi=0, Pi=1) have the same time trend. (identification assumptions 1&2 for DDD)
+```{r}
+data_pre |>
+  group_by(time, treatment, type_beer) |>
+  summarise(mean_beer_sales = mean(beer_sales, na.rm = TRUE)) |>
+  ggplot(aes(x = time, y = mean_beer_sales, color = as.factor(treatment))) +
+  geom_line() +
+  facet_wrap(~ type_beer, labeller = labeller(type_beer = c("0" = "Non-beer (Pi=0)", "1" = "Beer (Pi=1)"))) +
+  labs(title = "Pre-trends by Treatment Group and Store Type", y="Average beer sales",
+       color = "Treatment (Gi)")
+```
+not quite parallel in each type of stores but roughly similar, especially about the treatment starting time (time=7-15).
+
+then the third assumption: the group (placebo) effect (differences between different types of stores) is the same between the two sets of groups (actual & placebo).
+```{r}
+data_pre |>
+  group_by(time, type_beer, treatment) |>
+  summarise(mean_beer_sales = mean(beer_sales, na.rm = TRUE)) |>
+  ggplot(aes(x = time, y = mean_beer_sales, color = factor(type_beer))) +
+  geom_line() +
+  facet_wrap(~ treatment, labeller = labeller(treatment = c("0" = "Control", "1" = "Treated"))) +
+  labs(title = "Pre-trends by Wine Sales Bin within Treatment Groups", y="Average beer sales", color="Type of stores \n (1 for beer)")
+
+```
+relatively more parallel!
+
+check if the effects occur even before the treatment (all three assumptions) with code
+```{r}
+summary(lm(beer_sales ~ treatment * factor(time) * type_beer + wine_sales + theft_rate, data = data_pre))
+```
+with pre-treatment data, practically all the coefficient on treated:time:wine_sales_bin are statistically insignificant, suggesting no DDD effect before treatment.
+
+The assumptions hold!
+
+Therefore, use DDD model with type_beer, and controlling over wine_sales and theft rate:
+```{r}
+ddd_type_beer <- lm(beer_sales~ treatment*time_dum*type_beer + wine_sales + theft_rate, data=data)
+
+summary(ddd_type_beer)
+```
+This is my final numerical estimate of the promotion’s effectiveness: 0.04128. And It is both statistically insignificant with the p-value of 0.98 and economically insignificant.
+
+However, due to the decrease in sample size, the variance is larger and the standard error of the result is larger.
+
