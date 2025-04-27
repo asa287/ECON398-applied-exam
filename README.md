@@ -1,1 +1,9 @@
 # ECON398-applied-exam
+
+The program ran a promotion starting in July (T=15 in the data) in selected stores to help promote beer sales. 
+
+To evaluate its effectiveness, I used a difference-in-differences model, comparing the promotion effect before and after the promotion in the promoted and non-promoted stores, controlling for wine sales. Wine sales were included as a control because ther were not time-invariant, and could confound the estimates, as suggested by the time trend plot. (they decreases in the plot after the promotion, which may be an evidence that it distracted customers). The DD model estimates a promotion effect of 2.859 and it is statistically significant at 0.01 level. I then assessed the validation of the common trends assumption for the DD model visually and through regression analysis, but the evidence supporting it is not very strong.
+
+To inprove the estimation, I also tried a triple difference model. I used store type (whether specializes in beer) as a placebo variable, since it does not have interaction with the actual treatment effect (0.50), which is also statisitically insignificant (p = 0.698), indicating the store type does not affect the differences in beer sales trends systematically across groups. Validation tests for the DDD identification assumptions also shows relatively weak validation. The final DDD model, controlling for wine sales and theft rate, estimates the promotion’s effectiveness is 0.04128, which is both statistically insignificant with the p-value of 0.98 and economically insignificant. However, due to our limited observations and a reduced sample size in the DDD model, the variance and the standard errors increased compared to the DD model. That said, the DDD model provides a more robust eatimate by further reducing confounding bias. Therefore, I rely on the DDD estimate more.
+
+In summary, both DD and DDD results suggest that the promotion's effectiveness was not quite ideal.
