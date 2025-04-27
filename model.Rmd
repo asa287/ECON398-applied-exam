@@ -52,6 +52,7 @@ dd_loc <- lm(beer_sales~treatment*time_dum + location, data=data)
 dd_type <- lm(beer_sales~treatment*time_dum + type, data=data)
 ```
 
+# the final DD model I choose to use
 ```{r}
 dd_wine <- lm(beer_sales~treatment*time_dum + wine_sales, data=data)
 ```
@@ -90,7 +91,7 @@ data_test <- data |>
 ggplot(data_test, aes(x = time, y = beer_sales_mean, color = factor(treatment))) +
   geom_line(size = 0.5) +
   geom_point(size = 1) +
-  geom_vline(xintercept = 17, linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = 15, linetype = "dashed", color = "grey50") +
   scale_color_manual(
     values = c("blue", "red"),
     labels = c("control", "treatment"),
@@ -98,7 +99,7 @@ ggplot(data_test, aes(x = time, y = beer_sales_mean, color = factor(treatment)))
   ) +
   labs(
     title    = "Average Beer Sales by Time Group and Treatment",
-    subtitle = "Full series (0-16 = pre-trend; start treatment at 17=July)",
+    subtitle = "Full series (1-14 = pre-trend; start treatment at 15=July)",
     x        = "time",
     y        = "average beer sales over stores"
   ) +
@@ -112,7 +113,7 @@ dd_cta_test <- lm(beer_sales~treatment*factor(time), data=data_pre)
 #coef(dd)["treatment:time_dum"]
 summary(dd_cta_test)
 ```
-looks bad. pre-trends do not common for most of the periods before treatment, but most of them are not statistically significant.
+fairly good, most of them are not statistically significant.
 
 add some controls and try again
 ```{r}
@@ -131,7 +132,7 @@ data_test_wine_sales <- data |>
 ggplot(data_test_wine_sales, aes(x = time, y = wine_sales_mean, color = factor(treatment))) +
   geom_line(size = 0.5) +
   geom_point(size = 1) +
-  geom_vline(xintercept = 17, linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = 15, linetype = "dashed", color = "grey50") +
   scale_color_manual(
     values = c("blue", "red"),
     labels = c("control", "treatment"),
@@ -139,9 +140,9 @@ ggplot(data_test_wine_sales, aes(x = time, y = wine_sales_mean, color = factor(t
   ) +
   labs(
     title    = "Average Wine Sales by Time Group and Treatment",
-    subtitle = "Full series (0-16 = pre-trend; start treatment at 17=July)",
+    subtitle = "Full series (1-14 = pre-trend; start treatment at 15=July)",
     x        = "time",
-    y        = "average beer sales over stores"
+    y        = "average wine sales over stores"
   ) +
   theme_minimal()
 ```
@@ -154,12 +155,12 @@ data_test_wine_sales_all <- data |>
 ggplot(data_test_wine_sales_all, aes(x = time, y = wine_sales_mean)) +
   geom_line(size = 0.5) +
   geom_point(size = 1) +
-  geom_vline(xintercept = 17, linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = 15, linetype = "dashed", color = "grey50") +
   labs(
-    title    = "Average Beer Sales by Time Group and Treatment",
-    subtitle = "Full series (0-16 = pre-trend; start treatment at 17=July)",
+    title    = "Average Wine Sales over time",
+    subtitle = "Full series (1-14 = pre-trend; start treatment at 15=July)",
     x        = "time",
-    y        = "average beer sales over stores"
+    y        = "average wine sales"
   ) +
   theme_minimal()
 ```
@@ -174,12 +175,12 @@ data_test_theft_rate_all <- data |>
 ggplot(data_test_theft_rate_all, aes(x = time, y = theft_rate_mean)) +
   geom_line(size = 0.5) +
   geom_point(size = 1) +
-  geom_vline(xintercept = 17, linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = 15, linetype = "dashed", color = "grey50") +
   labs(
-    title    = "Average Theft Rate by Time Group and Treatment",
-    subtitle = "Full series (0-16 = pre-trend; start treatment at 17=July)",
+    title    = "Average Theft Rate over time",
+    subtitle = "Full series (1-14 = pre-trend; start treatment at 15=July)",
     x        = "time",
-    y        = "average beer sales over stores"
+    y        = "average theft rate"
   ) +
   theme_minimal()
 ```
@@ -194,12 +195,12 @@ data_test_beer_sales_all <- data |>
 ggplot(data_test_beer_sales_all, aes(x = time, y = beer_sales_mean)) +
   geom_line(size = 0.5) +
   geom_point(size = 1) +
-  geom_vline(xintercept = 17, linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = 15, linetype = "dashed", color = "grey50") +
   labs(
-    title    = "Average Beer Sales by Time Group and Treatment",
-    subtitle = "Full series (0-16 = pre-trend; start treatment at 17=July)",
+    title    = "Average Beer Sales over Time",
+    subtitle = "Full series (1-14 = pre-trend; start treatment at 15=July)",
     x        = "time",
-    y        = "average beer sales over stores"
+    y        = "average beer sales"
   ) +
   theme_minimal()
 ```
@@ -235,7 +236,7 @@ data_pre |>
   ggplot(aes(x = time, y = mean_beer_sales, color = as.factor(treatment))) +
   geom_line() +
   facet_wrap(~ type_beer, labeller = labeller(type_beer = c("0" = "Non-beer (Pi=0)", "1" = "Beer (Pi=1)"))) +
-  labs(title = "Pre-trends by Treatment Group and Store Type", y="Average beer sales",
+  labs(title = "Pre-trends of Average Beer Sales by Groups for Each Type of Store", y="Average beer sales",
        color = "Treatment (Gi)")
 ```
 not quite parallel in each type of stores but roughly similar, especially about the treatment starting time (time=7-15).
@@ -248,7 +249,7 @@ data_pre |>
   ggplot(aes(x = time, y = mean_beer_sales, color = factor(type_beer))) +
   geom_line() +
   facet_wrap(~ treatment, labeller = labeller(treatment = c("0" = "Control", "1" = "Treated"))) +
-  labs(title = "Pre-trends by Wine Sales Bin within Treatment Groups", y="Average beer sales", color="Type of stores \n (1 for beer)")
+  labs(title = "Pre-trends of Average Beer Sales by Type of Stores for Each Group", y="Average beer sales", color="Type of stores \n (1 for beer)")
 
 ```
 relatively more parallel!
@@ -270,4 +271,71 @@ summary(ddd_type_beer)
 This is my final numerical estimate of the promotion’s effectiveness: 0.04128. And It is both statistically insignificant with the p-value of 0.98 and economically insignificant.
 
 However, due to the decrease in sample size, the variance is larger and the standard error of the result is larger.
+
+
+## total sales
+Now let me check for treatment effect on the total sales that includes both beer and wine sales
+```{r}
+data_total <- data |>
+  mutate(total_sales=wine_sales+beer_sales)
+
+data_test_total_sales <- data_total |>
+  group_by(time) |>
+  summarize(total_sales=mean(total_sales))
+            
+ggplot(data_test_total_sales, aes(x = time, y = total_sales)) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1) +
+  geom_vline(xintercept = 15, linetype = "dashed", color = "grey50") +
+  labs(
+    title    = "Total Sales over Time",
+    subtitle = "Full series (1-14 = pre-trend; start treatment at 15=July)",
+    x        = "time",
+    y        = "total sales"
+  ) +
+  theme_minimal()
+```
+not change much as a whole.
+
+compare our two groups:
+
+```{r}
+data_test_total_sales_groups <- data_total |>
+  group_by(treatment, time) |>
+  summarize(total_sales_mean=mean(total_sales))
+
+ggplot(data_test_total_sales_groups, aes(x = time, y = total_sales_mean, color = factor(treatment))) +
+  geom_line(size = 0.5) +
+  geom_point(size = 1) +
+  geom_vline(xintercept = 15, linetype = "dashed", color = "grey50") +
+  scale_color_manual(
+    values = c("blue", "red"),
+    labels = c("control", "treatment"),
+    name   = "Promotion"
+  ) +
+  labs(
+    title    = "Total Sales by Time and Treatment Group",
+    subtitle = "Full series (1-14 = pre-trend; start treatment at 15=July)",
+    x        = "time",
+    y        = "total sales"
+  ) +
+  theme_minimal()
+```
+
+```{r}
+data_total_pre <- data_total |>
+  filter(time<=14)
+```
+
+```{r}
+summary(lm(total_sales~treatment*factor(time) + theft_rate+factor(location), data=data_total_pre))
+```
+CTA relatively holds.
+
+
+```{r}
+summary(lm(total_sales~treatment*time_dum + theft_rate, data=data_total))
+```
+the promotion statistically significantly reduced the total sales by 4.4.
+
 
